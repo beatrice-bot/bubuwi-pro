@@ -3,59 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bubuwi Pro - Nonton Anime Dinamis</title>
+    <meta name="theme-color" content="#0d0b14">
+    <title>Bubuwi Elegant</title>
     <link rel="stylesheet" href="style.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
-    <div class="background-effects">
-        <div class="shooting-star"></div>
-        <div class="shooting-star"></div>
-    </div>
-
-    <div class="container">
-        <header class="main-header">
-            <h1 onclick="location.reload()">Bubuwi Pro 🚀</h1>
-            <form id="search-form">
-                <input type="text" id="search-input" placeholder="Cari judul anime..." required>
-                <button type="submit">Cari</button>
-            </form>
-        </header>
-
-        <main id="content-container">
-            </main>
-
-        <template id="home-page-template">
-            <div id="home-page" class="page">
-                <div class="sidebar">
-                    <h3>⭐ Favorit</h3>
-                    <div id="favorites-list"></div>
-                    <hr>
-                    <h3>🕒 Riwayat</h3>
-                    <div id="history-list"></div>
-                </div>
-                <div class="main-content">
-                    <h2>Rilisan Terbaru</h2>
-                    <div id="latest-episodes" class="episode-grid"></div>
-                </div>
-            </div>
-        </template>
-
-        <template id="watch-page-template">
-            <div id="watch-page" class="page-watch">
-                <button class="back-button">← Kembali</button>
-                <h2 id="video-title-watch"></h2>
-                <div class="video-container">
-                    <iframe id="video-player" frameborder="0" allowfullscreen></iframe>
-                </div>
-                <button id="add-favorite-btn">⭐ Tambah ke Favorit</button>
-            </div>
-        </template>
-        
-    </div>
-
+    <div id="app">
+        </div>
     <script src="script.js"></script>
 </body>
 </html>
