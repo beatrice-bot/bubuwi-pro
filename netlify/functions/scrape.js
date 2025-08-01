@@ -5,7 +5,7 @@ const { parseStringPromise } = require('xml2js');
 
 const BASE_URL = 'https://samehadaku.li';
 
-// --- Fungsi Utama ---
+// --- Fungsi Utama (Tidak ada perubahan) ---
 exports.handler = async function (event, context) {
     const { url, search, animePage } = event.queryStringParameters;
     try {
@@ -13,11 +13,10 @@ exports.handler = async function (event, context) {
         if (search) {
             data = await scrapeSearchFeed(search);
         } else if (animePage) {
-            data = await scrapeAnimePage(animePage);
+            data = await scrapeAnimePage(animePage); // Fungsi ini yang kita perbaiki
         } else if (url) {
             data = await scrapeEpisodePage(url);
         } else {
-            // Halaman utama (sekarang tidak dipakai, tapi biarkan saja)
             data = { type: 'home' }; 
         }
         return { statusCode: 200, body: JSON.stringify(data) };
@@ -29,7 +28,7 @@ exports.handler = async function (event, context) {
 
 // --- LOGIKA SCRAPER ---
 
-// 1. Scraping Pencarian dari RSS FEED (Cepat & Stabil)
+// 1. Scraping Pencarian dari RSS FEED (Tidak ada perubahan)
 async function scrapeSearchFeed(query) {
     const feedUrl = `${BASE_URL}/search/${encodeURIComponent(query)}/feed/rss2/`;
     const { data } = await axios.get(feedUrl);
@@ -48,32 +47,40 @@ async function scrapeSearchFeed(query) {
     return { type: 'search', query, results };
 }
 
-// 2. Scraping Halaman Anime untuk daftar episode & thumbnail (Detail)
+// 2. Scraping Halaman Anime (PERBAIKAN TOTAL DI SINI)
 async function scrapeAnimePage(url) {
     const { data } = await axios.get(url);
     const $ = cheerio.load(data);
     
     const episodes = [];
-    // Selector baru berdasarkan file HTML yang kamu berikan
-    $('.episodelist ul li').each((i, el) => {
+    
+    // ===== PERBAIKAN UTAMA =====
+    // Selector yang benar sekarang adalah '.eplister ul li', bukan '.episodelist ul li'
+    // Kita juga mengambil data dari struktur div di dalamnya.
+    $('.eplister ul li').each((i, el) => {
         const episodeElement = $(el);
-        const linkElement = episodeElement.find('.lefttitle a');
+        const linkElement = episodeElement.find('a'); // Link utama ada di tag <a>
         
-        episodes.push({
-            title: linkElement.text(),
-            link: linkElement.attr('href'),
-            date: episodeElement.find('.righttitle').text()
-        });
+        // Ambil data dari div spesifik di dalamnya
+        const title = linkElement.find('.epl-title').text();
+        const link = linkElement.attr('href');
+        const date = linkElement.find('.epl-date').text();
+        
+        // Pastikan hanya data yang valid yang masuk
+        if(title && link) {
+            episodes.push({ title, link, date });
+        }
     });
     
+    // Bagian ini tetap sama
     const thumbnail = $('.thumb img').attr('src');
     const synopsis = $('.entry-content.series p').text();
-    const episodeCount = episodes.length;
+    const episodeCount = episodes.length; // Sekarang akan menghitung dengan benar
 
     return { type: 'animePage', episodes, thumbnail, synopsis, episodeCount };
 }
 
-// 3. Scraping Halaman Episode (Final)
+// 3. Scraping Halaman Episode (Tidak ada perubahan)
 async function scrapeEpisodePage(episodeUrl) {
     const { data } = await axios.get(episodeUrl);
     const $ = cheerio.load(data);
