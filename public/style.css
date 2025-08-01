@@ -1,77 +1,94 @@
-/* ... (Gaya dasar dari jawaban sebelumnya tetap sama: body, container, dll) ... */
-
-/* Basic Reset & Setup */
-* { margin: 0; padding: 0; box-sizing: border-box; }
+/* --- Global & Theme --- */
+:root {
+    --bg-primary: #0d0b14;
+    --bg-glass: rgba(29, 26, 40, 0.6);
+    --text-primary: #eaeaea;
+    --text-secondary: #9a9a9a;
+    --accent-primary: #9f5cfa;
+    --accent-glow: rgba(159, 92, 250, 0.5);
+    --border-color: rgba(255, 255, 255, 0.1);
+    --font-family: 'Inter', sans-serif;
+}
 body {
-    font-family: 'Poppins', sans-serif;
-    background-color: #0c0a1a;
-    background-image: url('https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRJMBbr6cv6UdjyBiiGsk1SPKrv81n7SdX5_ANpHrMc0wLxhCDOl5I20K8&s=10');
-    background-size: cover;
-    background-position: center;
-    background-attachment: fixed;
-    color: #fff;
-    overflow-x: hidden;
+    font-family: var(--font-family);
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    margin: 0;
 }
-.container {
-    max-width: 1200px;
-    margin: 1.5rem auto;
-    padding: 1.5rem;
-    background: rgba(12, 10, 26, 0.75);
-    backdrop-filter: blur(12px);
-    border-radius: 15px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    min-height: 80vh;
+#app {
+    padding: 1rem;
 }
+/* --- Animations --- */
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+.fade-in { animation: fadeIn 0.5s ease-in-out; }
 
-/* Header & Search */
-.main-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem; }
-.main-header h1 { cursor: pointer; }
-#search-form { display: flex; }
-#search-input { width: 250px; padding: 10px; border: 1px solid #333; border-radius: 8px 0 0 8px; background: #222; color: #fff; font-size: 1rem; }
-#search-form button { padding: 10px 15px; border: none; background-color: #6a0dad; color: white; cursor: pointer; border-radius: 0 8px 8px 0; }
-
-/* Halaman Utama */
-#home-page { display: flex; gap: 2rem; }
-.sidebar { flex: 0 0 250px; }
-.main-content { flex-grow: 1; }
-.sidebar h3 { margin-bottom: 1rem; border-bottom: 2px solid #6a0dad; padding-bottom: 5px; }
-#favorites-list a, #history-list a { display: block; padding: 8px; margin-bottom: 5px; background: rgba(255,255,255,0.05); border-radius: 5px; text-decoration: none; color: #eee; font-size: 0.9rem; transition: background 0.3s; }
-#favorites-list a:hover, #history-list a:hover { background: #6a0dad; }
-
-/* Grid & Card */
-.episode-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 1.5rem; width: 100%; }
-.episode-card { background: rgba(255, 255, 255, 0.05); border-radius: 10px; overflow: hidden; transition: transform 0.3s, box-shadow 0.3s; cursor: pointer; text-decoration: none; color: #fff; }
-.episode-card:hover { transform: translateY(-5px); box-shadow: 0 10px 20px rgba(0,0,0,0.4); }
-.episode-card img { width: 100%; height: auto; display: block; aspect-ratio: 16/10; object-fit: cover; }
-.episode-card .title { padding: 10px; font-size: 0.9rem; text-align: left; }
-.episode-card .epx { font-weight: bold; color: #8a2be2; }
-
-/* Halaman Nonton */
-.page-watch { text-align: center; }
-.back-button, #add-favorite-btn { background: #333; color: white; border: none; padding: 10px 15px; border-radius: 8px; cursor: pointer; transition: background-color 0.3s; margin: 1rem 0; }
-#add-favorite-btn { background-color: #8a2be2; }
-.video-container { position: relative; width: 100%; padding-top: 56.25%; background: #000; border-radius: 8px; margin: 1rem 0; }
-#video-player { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
-#video-title-watch { margin: 1rem 0; }
-
-/* Loading & Error */
-.loader { width: 50px; height: 50px; border: 5px solid #fff; border-bottom-color: #6a0dad; border-radius: 50%; display: inline-block; box-sizing: border-box; animation: rotation 1s linear infinite; margin: 5rem auto; }
-@keyframes rotation { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-.error-message { text-align: center; padding: 2rem; background: #4e0f0f; border-radius: 8px; }
-
-/* Animasi Bintang Jatuh (sama seperti sebelumnya) */
-.shooting-star { position: fixed; top: 50%; left: 50%; width: 4px; height: 4px; background: white; border-radius: 50%; box-shadow: 0 0 10px #fff, 0 0 20px #fff, 0 0 40px #fff; animation: shoot 5s linear infinite; opacity: 0; z-index: -1; }
-.shooting-star:nth-child(2) { animation-delay: 1.5s; animation-duration: 4s; }
-@keyframes shoot { 0% { opacity: 1; transform: translate(-300px, -300px) scale(0.5); } 100% { opacity: 0; transform: translate(calc(100vw - 300px), calc(100vh - 300px)) scale(1); } }
-
-/* Responsif */
-@media (max-width: 768px) {
-    #home-page { flex-direction: column-reverse; }
-    .sidebar { flex: 1 1 auto; }
+/* --- Skeleton Loader --- */
+.skeleton { background-color: #2a2834; border-radius: 8px; }
+@keyframes shimmer { 0% { background-position: -1000px 0; } 100% { background-position: 1000px 0; } }
+.skeleton.shimmer {
+    background-image: linear-gradient(to right, #2a2834 0%, #3a3845 20%, #2a2834 40%, #2a2834 100%);
+    background-repeat: no-repeat;
+    background-size: 2000px 100%;
+    animation: shimmer 1.5s linear infinite;
 }
-@media (max-width: 600px) {
-    .main-header { flex-direction: column; }
-    #search-input { width: 100%; border-radius: 8px; }
-    #search-form button { width: 100%; margin-top: 10px; border-radius: 8px; }
-    .episode-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
+.skeleton-header { width: 100%; height: 110px; margin-bottom: 2rem; }
+.skeleton-title { width: 60%; height: 24px; margin-bottom: 2rem; }
+.skeleton-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+.skeleton-card { aspect-ratio: 10 / 16; }
+
+/* --- Header & Search --- */
+.header { margin-bottom: 2rem; text-align: center; }
+.header h1 { font-size: 1.8rem; }
+#search-form { display: flex; margin-top: 1rem; }
+#search-input {
+    flex-grow: 1;
+    border: 1px solid var(--border-color);
+    background: var(--bg-glass);
+    padding: 0.8rem 1rem;
+    border-radius: 8px;
+    color: var(--text-primary);
+    font-size: 1rem;
+    backdrop-filter: blur(5px);
 }
+#search-input:focus { outline: 2px solid var(--accent-primary); }
+
+/* --- General Layout --- */
+.page-title { font-size: 1.5rem; margin-bottom: 1.5rem; }
+.back-button {
+    display: flex; align-items: center; gap: 0.5rem;
+    background: none; border: none; color: var(--text-primary);
+    font-size: 1rem; font-weight: 600; padding: 0.5rem 0; margin-bottom: 1rem; cursor: pointer;
+}
+/* --- Search Results & Anime Page --- */
+.search-results, .episode-list { display: flex; flex-direction: column; gap: 1rem; }
+.result-card, .episode-card {
+    display: flex; gap: 1rem;
+    padding: 0.75rem;
+    background: var(--bg-glass);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    backdrop-filter: blur(10px);
+    text-decoration: none;
+    color: var(--text-primary);
+    transition: background-color 0.2s, box-shadow 0.2s;
+}
+.result-card:hover, .episode-card:hover {
+    background: rgba(43, 40, 58, 0.8);
+    box-shadow: 0 0 15px var(--accent-glow);
+}
+.result-card-thumb { width: 60px; height: 85px; object-fit: cover; border-radius: 8px; background-color: #333; }
+.result-card-info { flex-grow: 1; }
+.result-card-info h3 { font-size: 1rem; margin: 0; }
+.result-card-info p { font-size: 0.8rem; color: var(--text-secondary); margin-top: 4px; }
+.anime-header { display: flex; gap: 1rem; margin-bottom: 2rem; }
+.anime-header-thumb { width: 100px; height: 140px; object-fit: cover; border-radius: 8px; }
+.anime-synopsis { font-size: 0.9rem; line-height: 1.6; color: var(--text-secondary); }
+
+/* --- Nonton Page --- */
+.watch-page-title { font-size: 1.25rem; margin-bottom: 1.5rem; }
+.video-container {
+    position: relative; width: 100%;
+    padding-top: 56.25%; background: #000;
+    border-radius: 12px; overflow: hidden;
+}
+.video-container iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
