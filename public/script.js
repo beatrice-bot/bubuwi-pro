@@ -19,12 +19,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const render = {
         // --- RENDER HALAMAN ---
-        home: async () => {
-            app.innerHTML = templates.skeletonLoader();
-            const data = await api.fetch(''); // Homepage
-            if (!data) return;
-            let cards = data.results.map(item => templates.resultCard(item)).join('');
-            app.innerHTML = templates.header('Bubuwi Elegant') + `<h2 class="page-title fade-in">Terbaru</h2><div class="search-results fade-in">${cards}</div>`;
+        home: () => {
+            app.innerHTML = templates.header('Bubuwi Elegant') + templates.contact();
         },
         search: async (query) => {
             app.innerHTML = templates.skeletonLoader();
@@ -48,7 +44,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     <img src="${data.thumbnail}" class="anime-header-thumb" alt="${title}">
                     <div>
                         <h2>${title}</h2>
-                        <p class="anime-synopsis">${data.synopsis.substring(0, 150)}...</p>
+                        <p class="anime-synopsis">
+                            <strong>Total Episode:</strong> ${data.episodeCount}
+                        </p>
                     </div>
                 </div>`;
             const episodeList = data.episodes.map(ep => templates.episodeCard(ep)).join('');
@@ -106,7 +104,22 @@ document.addEventListener('DOMContentLoaded', () => {
                     <h3>${ep.title}</h3>
                     <p>${ep.date}</p>
                 </div>
-            </a>`
+            </a>`,
+        contact: () => `
+            <div class="fade-in">
+                <h2 class="page-title">Kontak Developer</h2>
+                <div class="contact-card">
+                    <a href="https://www.instagram.com/adnanmwa" target="_blank" class="contact-link">
+                        <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/9/95/Instagram_logo_2022.svg/1000px-Instagram_logo_2022.svg.png" alt="Instagram Logo">
+                        <span>@adnanmwa</span>
+                    </a>
+                    <a href="https://www.tiktok.com/@adnansagiri" target="_blank" class="contact-link">
+                        <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSrLEt7CpnTRQ1va0on-RGO3aDsgpdlNFUoaw&s" alt="TikTok Logo">
+                        <span>@adnansagiri</span>
+                    </a>
+                </div>
+            </div>
+        `,
     };
 
     // --- NAVIGASI & EVENT HANDLING ---
@@ -149,8 +162,6 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             const linkUrl = link.dataset.link;
             const title = link.dataset.title;
-            // Jika kartu punya judul, berarti itu dari search/home -> buka halaman anime
-            // Jika tidak, berarti itu dari list episode -> buka halaman nonton
             if (title) {
                 runView('animePage', [linkUrl, title]);
             } else {
