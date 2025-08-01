@@ -1,174 +1,164 @@
 document.addEventListener('DOMContentLoaded', () => {
-    const contentContainer = document.getElementById('content-container');
-    const searchForm = document.getElementById('search-form');
-    const searchInput = document.getElementById('search-input');
-
-    // --- State Management ---
-    const appState = {
-        history: JSON.parse(localStorage.getItem('bubuwi_history')) || [],
-        favorites: JSON.parse(localStorage.getItem('bubuwi_favorites')) || [],
-        currentPage: 'home', // 'home', 'search', 'watch'
-        currentData: null,
+    const app = document.getElementById('app');
+    const state = {
+        history: [], // Untuk navigasi tombol kembali
     };
 
-    // --- API Helper ---
     const api = {
-        fetch: async (endpoint) => {
-            showLoader();
+        fetch: async (params) => {
             try {
-                const response = await fetch(`/api/scrape?${endpoint}`);
-                if (!response.ok) {
-                    throw new Error(`API Error: ${response.statusText}`);
-                }
+                const response = await fetch(`/api/scrape?${params}`);
+                if (!response.ok) throw new Error(`Server Error: ${response.status}`);
                 return await response.json();
             } catch (error) {
-                showError(error.message);
+                render.error(error.message);
                 return null;
             }
-        }
+        },
     };
 
-    // --- Rendering Functions ---
     const render = {
-        home: (data) => {
-            const template = document.getElementById('home-page-template').content.cloneNode(true);
-            const latestEpisodesContainer = template.getElementById('latest-episodes');
-            
-            data.results.forEach(item => {
-                const card = createCard(item.title, item.link, item.thumbnail, item.episode);
-                latestEpisodesContainer.appendChild(card);
-            });
-            
-            contentContainer.innerHTML = '';
-            contentContainer.appendChild(template);
-            render.sidebar();
+        // --- RENDER HALAMAN ---
+        home: async () => {
+            app.innerHTML = templates.skeletonLoader();
+            const data = await api.fetch(''); // Homepage
+            if (!data) return;
+            let cards = data.results.map(item => templates.resultCard(item)).join('');
+            app.innerHTML = templates.header('Bubuwi Elegant') + `<h2 class="page-title fade-in">Terbaru</h2><div class="search-results fade-in">${cards}</div>`;
         },
-        search: (data) => {
-            contentContainer.innerHTML = `
-                <div class="main-content">
-                    <button class="back-button">← Kembali ke Beranda</button>
-                    <h2>Hasil untuk: "${data.query}"</h2>
-                    <div class="episode-grid"></div>
-                </div>`;
-            const grid = contentContainer.querySelector('.episode-grid');
+        search: async (query) => {
+            app.innerHTML = templates.skeletonLoader();
+            const data = await api.fetch(`search=${query}`);
+            if (!data) return;
+            let content;
             if (data.results.length === 0) {
-                grid.innerHTML = '<p>Tidak ada hasil yang ditemukan.</p>';
+                content = `<p>Tidak ada hasil untuk "${query}".</p>`;
             } else {
-                data.results.forEach(item => {
-                    const card = createCard(item.title, item.link, item.thumbnail);
-                    grid.appendChild(card);
-                });
+                content = data.results.map(item => templates.resultCard(item, true)).join('');
             }
-            contentContainer.querySelector('.back-button').onclick = init;
+            app.innerHTML = templates.header('Hasil Pencarian') + templates.backButton() + `<div class="search-results fade-in">${content}</div>`;
         },
-        watch: (data) => {
-            appState.currentData = data;
-            const template = document.getElementById('watch-page-template').content.cloneNode(true);
-            template.getElementById('video-title-watch').textContent = data.title;
-            template.getElementById('video-player').src = data.videoFrames[0] || ''; // Ambil link video pertama
-            
-            contentContainer.innerHTML = '';
-            contentContainer.appendChild(template);
+        animePage: async (url, title) => {
+            app.innerHTML = templates.skeletonLoader();
+            const data = await api.fetch(`animePage=${encodeURIComponent(url)}`);
+            if (!data) return;
 
-            contentContainer.querySelector('.back-button').onclick = init;
-            contentContainer.querySelector('#add-favorite-btn').onclick = () => addToFavorites(data);
-            
-            addToHistory(data);
+            const header = `
+                <div class="anime-header fade-in">
+                    <img src="${data.thumbnail}" class="anime-header-thumb" alt="${title}">
+                    <div>
+                        <h2>${title}</h2>
+                        <p class="anime-synopsis">${data.synopsis.substring(0, 150)}...</p>
+                    </div>
+                </div>`;
+            const episodeList = data.episodes.map(ep => templates.episodeCard(ep)).join('');
+            app.innerHTML = templates.header(title, true) + templates.backButton() + header + `<div class="episode-list fade-in">${episodeList}</div>`;
         },
-        sidebar: () => {
-            const favList = document.getElementById('favorites-list');
-            const histList = document.getElementById('history-list');
-            if (!favList || !histList) return;
+        watchPage: async (url) => {
+            app.innerHTML = templates.skeletonLoader();
+            const data = await api.fetch(`url=${encodeURIComponent(url)}`);
+            if (!data) return;
+            app.innerHTML = `
+                <div class="fade-in">
+                    ${templates.backButton()}
+                    <h3 class="watch-page-title">${data.title}</h3>
+                    <div class="video-container">
+                        <iframe src="${data.videoFrames[0] || ''}" frameborder="0" allowfullscreen></iframe>
+                    </div>
+                </div>
+            `;
+        },
+        error: (message) => {
+            app.innerHTML = templates.header('Error') + `<p>Oops! ${message}</p>`;
+        },
+    };
 
-            favList.innerHTML = appState.favorites.length ? '' : '<p style="font-size:0.8rem;">Belum ada favorit.</p>';
-            appState.favorites.forEach(item => {
-                favList.innerHTML += `<a href="#" data-link="${item.link}">${item.title}</a>`;
-            });
+    const templates = {
+        // --- TEMPLATE KOMPONEN ---
+        header: (title, isSubPage = false) => `
+            <header class="header ${isSubPage ? '' : 'fade-in'}">
+                ${isSubPage ? '' : `<h1>${title}</h1>`}
+                <form id="search-form">
+                    <input type="text" id="search-input" placeholder="Cari anime..." required>
+                </form>
+            </header>`,
+        backButton: () => `<button class="back-button">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 256 256"><path d="M165.66,202.34a8,8,0,0,1-11.32,11.32l-80-80a8,8,0,0,1,0-11.32l80-80a8,8,0,0,1,11.32,11.32L91.31,128Z"></path></svg>
+            Kembali
+            </button>`,
+        skeletonLoader: () => `
+            ${templates.header('Loading...')}
+            <div class="skeleton shimmer skeleton-title"></div>
+            <div class="skeleton-grid">
+                ${'<div class="skeleton shimmer skeleton-card"></div>'.repeat(6)}
+            </div>`,
+        resultCard: (item, fromSearch = false) => `
+            <a href="#" class="result-card" data-link="${item.link}" data-title="${item.title}">
+                ${item.thumbnail ? `<img src="${item.thumbnail}" alt="" class="result-card-thumb">` : ''}
+                <div class="result-card-info">
+                    <h3>${item.title}</h3>
+                    ${fromSearch ? `<p>${new Date(item.pubDate).toLocaleDateString('id-ID', { year: 'numeric', month: 'long' })}</p>` : ''}
+                </div>
+            </a>`,
+        episodeCard: (ep) => `
+             <a href="#" class="episode-card" data-link="${ep.link}">
+                <div class="result-card-info">
+                    <h3>${ep.title}</h3>
+                    <p>${ep.date}</p>
+                </div>
+            </a>`
+    };
 
-            histList.innerHTML = appState.history.length ? '' : '<p style="font-size:0.8rem;">Belum ada riwayat.</p>';
-            appState.history.forEach(item => {
-                histList.innerHTML += `<a href="#" data-link="${item.link}">${item.title}</a>`;
-            });
-            
-            // Add event listeners to sidebar links
-            document.querySelectorAll('.sidebar a').forEach(link => {
-                link.onclick = (e) => {
-                    e.preventDefault();
-                    handleCardClick(link.dataset.link);
-                };
-            });
+    // --- NAVIGASI & EVENT HANDLING ---
+    const handleNavigation = (view, params) => {
+        state.history.push({ view, params });
+        runView(view, params);
+    };
+
+    const goBack = () => {
+        state.history.pop(); // Hapus view saat ini
+        const last = state.history[state.history.length-1] || { view: 'home', params: [] }; // Ambil view sebelumnya
+        runView(last.view, last.params, true);
+    };
+
+    const runView = (view, params, isGoingBack = false) => {
+        if (!isGoingBack) state.history.push({ view, params });
+        switch (view) {
+            case 'search': render.search(...params); break;
+            case 'animePage': render.animePage(...params); break;
+            case 'watchPage': render.watchPage(...params); break;
+            default: state.history = []; render.home();
         }
     };
     
-    // --- UI Component Functions ---
-    const showLoader = () => {
-        contentContainer.innerHTML = '<div class="loader"></div>';
-    };
-
-    const showError = (message) => {
-        contentContainer.innerHTML = `<div class="error-message"><h3>Oops! Terjadi Kesalahan</h3><p>${message}</p><button class="back-button">Coba Lagi</button></div>`;
-        contentContainer.querySelector('.back-button').onclick = init;
-    };
-    
-    const createCard = (title, link, thumbnail, episodeText = '') => {
-        const card = document.createElement('a');
-        card.className = 'episode-card';
-        card.href = '#';
-        card.dataset.link = link;
-        card.innerHTML = `
-            <img src="${thumbnail}" alt="${title}" loading="lazy">
-            <div class="title">${title} <span class="epx">${episodeText}</span></div>
-        `;
-        card.onclick = (e) => {
+    app.addEventListener('submit', e => {
+        if (e.target.id === 'search-form') {
             e.preventDefault();
-            handleCardClick(link);
-        };
-        return card;
-    };
-
-    // --- Event Handlers & Logic ---
-    const handleCardClick = async (link) => {
-        const data = await api.fetch(`url=${encodeURIComponent(link)}`);
-        if (data) {
-            data.link = link; // Simpan link original untuk history/favorit
-            render.watch(data);
-        }
-    };
-    
-    searchForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const query = searchInput.value.trim();
-        if (query) {
-            const data = await api.fetch(`search=${encodeURIComponent(query)}`);
-            if (data) render.search(data);
-            searchInput.value = '';
+            const query = e.target.querySelector('#search-input').value.trim();
+            if (query) runView('search', [query]);
         }
     });
 
-    const addToHistory = (item) => {
-        appState.history = [item, ...appState.history.filter(h => h.link !== item.link)].slice(0, 5);
-        localStorage.setItem('bubuwi_history', JSON.stringify(appState.history));
-    };
+    app.addEventListener('click', e => {
+        const link = e.target.closest('a[data-link], button.back-button');
+        if (!link) return;
+        e.preventDefault();
 
-    const addToFavorites = (item) => {
-        if (!appState.favorites.some(f => f.link === item.link)) {
-            appState.favorites = [item, ...appState.favorites];
-            localStorage.setItem('bubuwi_favorites', JSON.stringify(appState.favorites));
-            alert(`"${item.title}" ditambahkan ke favorit!`);
-            render.sidebar();
+        if (link.classList.contains('back-button')) {
+            goBack();
         } else {
-            alert('Anime ini sudah ada di favorit.');
+            const linkUrl = link.dataset.link;
+            const title = link.dataset.title;
+            // Jika kartu punya judul, berarti itu dari search/home -> buka halaman anime
+            // Jika tidak, berarti itu dari list episode -> buka halaman nonton
+            if (title) {
+                runView('animePage', [linkUrl, title]);
+            } else {
+                runView('watchPage', [linkUrl]);
+            }
         }
-    };
-
-    // --- Initialization ---
-    const init = async () => {
-        const data = await api.fetch(''); // Fetch latest
-        if (data) {
-            render.home(data);
-        }
-    };
-
-    init();
+    });
+    
+    // Inisialisasi Aplikasi
+    runView('home', []);
 });
-
