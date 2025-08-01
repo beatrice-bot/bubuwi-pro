@@ -1,108 +1,104 @@
 // File: netlify/functions/scrape.js
-
 const axios = require('axios');
 const cheerio = require('cheerio');
+const { parseStringPromise } = require('xml2js');
 
-// URL dasar website target
 const BASE_URL = 'https://samehadaku.li';
 
-// Fungsi utama yang akan dijalankan oleh Netlify
+// --- Fungsi Utama ---
 exports.handler = async function (event, context) {
-    // Mendapatkan parameter dari URL, misal: /api/scrape?url=... atau /api/scrape?search=...
-    const { url, search } = event.queryStringParameters;
-
+    const { url, search, animePage } = event.queryStringParameters;
     try {
         let data;
-        if (url) {
-            // Jika ada parameter 'url', kita scrape halaman detail episode
+        if (search) {
+            // LOGIKA BARU: Gunakan parser XML untuk pencarian
+            data = await scrapeSearchFeed(search);
+        } else if (animePage) {
+            // LOGIKA BARU: Scrape halaman utama anime untuk daftar episode
+            data = await scrapeAnimePage(animePage);
+        } else if (url) {
+            // Logika lama untuk mengambil video
             data = await scrapeEpisodePage(url);
-        } else if (search) {
-            // Jika ada parameter 'search', kita scrape hasil pencarian
-            data = await scrapeSearchPage(search);
         } else {
-            // Jika tidak ada parameter, kita scrape halaman utama untuk daftar terbaru
+            // Halaman utama
             data = await scrapeHomePage();
         }
-
-        // Mengembalikan data sebagai JSON dengan status 200 (OK)
-        return {
-            statusCode: 200,
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(data),
-        };
+        return { statusCode: 200, body: JSON.stringify(data) };
     } catch (error) {
-        console.error('Scraping error:', error);
-        return {
-            statusCode: 500,
-            body: JSON.stringify({ error: 'Gagal melakukan scraping.', details: error.message }),
-        };
+        console.error('Scraping error:', error.message);
+        return { statusCode: 500, body: JSON.stringify({ error: error.message }) };
     }
 };
 
-// Fungsi untuk scraping halaman utama
+// --- LOGIKA SCRAPER BARU ---
+
+// 1. Scraping Pencarian dari RSS FEED (Cepat & Stabil)
+async function scrapeSearchFeed(query) {
+    const feedUrl = `${BASE_URL}/search/${encodeURIComponent(query)}/feed/rss2/`;
+    const { data } = await axios.get(feedUrl);
+    const parsed = await parseStringPromise(data);
+
+    // Cek jika ada item atau tidak
+    if (!parsed.rss.channel[0].item) {
+        return { type: 'search', query, results: [] };
+    }
+
+    const results = parsed.rss.channel[0].item.map(item => ({
+        title: item.title[0],
+        link: item.link[0],
+        pubDate: item.pubDate[0],
+        // Thumbnail tidak ada di RSS, akan kita ambil di langkah selanjutnya
+        thumbnail: null 
+    }));
+    return { type: 'search', query, results };
+}
+
+// 2. Scraping Halaman Anime untuk daftar episode & thumbnail (Detail)
+async function scrapeAnimePage(url) {
+    const { data } = await axios.get(url);
+    const $ = cheerio.load(data);
+
+    const episodes = [];
+    $('.episodelist ul li').each((i, el) => {
+        const linkEl = $(el).find('.lefttitle a');
+        const title = linkEl.text();
+        const link = linkEl.attr('href');
+        const date = $(el).find('.righttitle').text();
+        episodes.push({ title, link, date });
+    });
+
+    const thumbnail = $('.thumb img').attr('src');
+    const synopsis = $('.entry-content.series p').text();
+
+    return { type: 'animePage', episodes, thumbnail, synopsis };
+}
+
+// --- LOGIKA SCRAPER LAMA (Tetap dibutuhkan) ---
+
+// 3. Scraping Halaman Utama (Homepage)
 async function scrapeHomePage() {
     const { data } = await axios.get(BASE_URL);
     const $ = cheerio.load(data);
     const episodes = [];
-
     $('.post-show ul li').each((i, el) => {
-        const title = $(el).find('a').attr('title');
-        const link = $(el).find('a').attr('href');
-        const episode = $(el).find('.epx').text().trim();
-        // Thumbnail di halaman utama biasanya tidak spesifik, jadi kita bisa cari nanti
-        // atau gunakan placeholder
-        const thumbnail = $(el).find('img') ? $(el).find('img').attr('src') : 'placeholder.jpg';
-
-        if (title && link) {
-            episodes.push({ title, link, episode, thumbnail });
-        }
-    });
-
-    return { type: 'latest', results: episodes };
-}
-
-// Fungsi untuk scraping halaman pencarian
-async function scrapeSearchPage(query) {
-    const { data } = await axios.get(`${BASE_URL}/?s=${query}`);
-    const $ = cheerio.load(data);
-    const results = [];
-
-    $('h2.page-title').remove(); // Hapus judul utama agar tidak ikut ter-scrape
-    $('.animelist-search li').each((i, el) => {
-        const title = $(el).find('h2 a').text();
-        const link = $(el).find('h2 a').attr('href');
-        const thumbnail = $(el).find('img').attr('src');
-        const genres = [];
-        $(el).find('.genre-info a').each((i, genreEl) => {
-            genres.push($(genreEl).text());
+        episodes.push({
+            title: $(el).find('a').attr('title'),
+            link: $(el).find('a').attr('href'),
+            thumbnail: $(el).find('img')?.attr('src'),
         });
-
-        if (title && link) {
-            results.push({ title, link, thumbnail, genres });
-        }
     });
-
-    return { type: 'search', query, results };
+    return { type: 'latest', results: episodes.filter(e => e.title) };
 }
 
-
-// Fungsi untuk scraping halaman detail episode (mirip dengan yang lama)
+// 4. Scraping Halaman Episode (Final)
 async function scrapeEpisodePage(episodeUrl) {
     const { data } = await axios.get(episodeUrl);
     const $ = cheerio.load(data);
-
     const title = $('.entry-title').text().trim();
     const videoFrames = [];
     $('.player-embed iframe').each((i, el) => {
         const src = $(el).attr('src');
-        if (src) {
-            videoFrames.push(src);
-        }
+        if (src) videoFrames.push(src);
     });
-
-    return {
-        type: 'episode',
-        title,
-        videoFrames: videoFrames.length > 0 ? videoFrames : ['Video tidak ditemukan'],
-    };
+    return { type: 'episode', title, videoFrames: videoFrames.length > 0 ? videoFrames : ['Video tidak ditemukan'] };
 }
